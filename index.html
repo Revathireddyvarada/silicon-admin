@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ticket Socket Tester</title>
+    <!-- <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: monospace;
+        background: #0f1117;
+        color: #e2e8f0;
+        display: flex;
+        height: 100vh;
+      }
+
+      .sidebar {
+        width: 320px;
+        min-width: 320px;
+        background: #1a1d2e;
+        border-right: 1px solid #2d3148;
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        gap: 12px;
+        overflow-y: auto;
+      }
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .log-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .toolbar {
+        padding: 10px 16px;
+        background: #1a1d2e;
+        border-top: 1px solid #2d3148;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      h2 {
+        font-size: 13px;
+        color: #7c85b3;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 4px;
+      }
+
+      label {
+        font-size: 11px;
+        color: #7c85b3;
+        display: block;
+        margin-bottom: 3px;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 7px 10px;
+        background: #0f1117;
+        border: 1px solid #2d3148;
+        border-radius: 6px;
+        color: #e2e8f0;
+        font-family: monospace;
+        font-size: 12px;
+        outline: none;
+      }
+      input:focus,
+      textarea:focus {
+        border-color: #5b6af0;
+      }
+      textarea {
+        resize: vertical;
+        min-height: 48px;
+      }
+
+      button {
+        padding: 7px 14px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        font-family: monospace;
+        font-weight: 600;
+        transition: opacity 0.15s;
+      }
+      button:hover {
+        opacity: 0.85;
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .btn-primary {
+        background: #5b6af0;
+        color: #fff;
+      }
+      .btn-success {
+        background: #22c55e;
+        color: #000;
+      }
+      .btn-danger {
+        background: #ef4444;
+        color: #fff;
+      }
+      .btn-warning {
+        background: #f59e0b;
+        color: #000;
+      }
+      .btn-ghost {
+        background: #2d3148;
+        color: #e2e8f0;
+      }
+      .btn-sm {
+        padding: 5px 10px;
+        font-size: 11px;
+      }
+      .btn-full {
+        width: 100%;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+      }
+      .dot-green {
+        background: #22c55e;
+        box-shadow: 0 0 6px #22c55e;
+      }
+      .dot-red {
+        background: #ef4444;
+      }
+      .dot-yellow {
+        background: #f59e0b;
+      }
+
+      .log-entry {
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        line-height: 1.5;
+        border-left: 3px solid transparent;
+      }
+      .log-info {
+        background: #1a1d2e;
+        border-color: #5b6af0;
+      }
+      .log-success {
+        background: #052e16;
+        border-color: #22c55e;
+        color: #86efac;
+      }
+      .log-error {
+        background: #2d0a0a;
+        border-color: #ef4444;
+        color: #fca5a5;
+      }
+      .log-event {
+        background: #1c1505;
+        border-color: #f59e0b;
+        color: #fde68a;
+      }
+      .log-sent {
+        background: #0d1f3c;
+        border-color: #3b82f6;
+        color: #93c5fd;
+      }
+      .log-system {
+        background: #111;
+        border-color: #444;
+        color: #888;
+      }
+
+      .log-time {
+        color: #4a5080;
+        font-size: 10px;
+        margin-right: 8px;
+      }
+      .log-tag {
+        font-weight: 700;
+        margin-right: 6px;
+      }
+
+      pre {
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin-top: 4px;
+        color: inherit;
+        opacity: 0.9;
+      }
+
+      .section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .divider {
+        border: none;
+        border-top: 1px solid #2d3148;
+        margin: 4px 0;
+      }
+      .row {
+        display: flex;
+        gap: 6px;
+      }
+      .row button {
+        flex: 1;
+      }
+
+      #conn-status {
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 2px 7px;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 700;
+        margin-left: 6px;
+      }
+      .badge-blue {
+        background: #1e3a8a;
+        color: #93c5fd;
+      }
+
+      ::-webkit-scrollbar {
+        width: 5px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #2d3148;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ── SIDEBAR ── -->
+    <div class="sidebar">
+      <div>
+        <h2>🔌 Connection</h2>
+      </div>
+
+      <div class="section">
+        <div>
+          <label>Server URL</label>
+          <input
+            id="serverUrl"
+            value="https://dev-realtime.silicondrive.com"
+            placeholder="http://localhost:3001"
+          />
+        </div>
+        <div>
+          <label>JWT Token</label>
+          <textarea
+            id="jwtToken"
+            rows="3"
+            placeholder="Paste your Bearer token here (without 'Bearer ')"
+          ></textarea>
+        </div>
+        <button class="btn-primary btn-full" onclick="connect()">
+          Connect
+        </button>
+        <button
+          class="btn-danger btn-full"
+          onclick="disconnect()"
+          id="btnDisconnect"
+          disabled
+        >
+          Disconnect
+        </button>
+        <div id="conn-status">
+          <span class="status-dot dot-red" id="statusDot"></span>
+          <span id="statusText">Disconnected</span>
+        </div>
+      </div>
+
+      <hr class="divider" />
+      <h2>🎫 Ticket Room</h2>
+
+      <div class="section">
+        <div>
+          <label>Ticket ID (UUID)</label>
+          <input
+            id="ticketId"
+            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+          />
+        </div>
+        <div class="row">
+          <button class="btn-success btn-sm" onclick="joinRoom()">
+            Join Room
+          </button>
+          <button class="btn-ghost btn-sm" onclick="leaveRoom()">
+            Leave Room
+          </button>
+        </div>
+      </div>
+
+      <hr class="divider" />
+      <h2>📨 HTTP Actions</h2>
+
+      <div class="section">
+        <div>
+          <label>API Base URL</label>
+          <input
+            id="apiBase"
+            value="https://dev-api.silicondrive.com"
+            placeholder="http://localhost:3001"
+          />
+        </div>
+        <div>
+          <label>Admin Bearer Token (for HTTP)</label>
+          <input id="httpToken" placeholder="Same token or different" />
+        </div>
+      </div>
+
+      <hr class="divider" />
+      <h6 style="font-size: 11px; color: #7c85b3">💬 Reply to ticket</h6>
+      <div class="section">
+        <div>
+          <label>Message</label>
+          <input id="replyMsg" placeholder="We are looking into the issue..." />
+        </div>
+        <div class="row">
+          <button class="btn-primary btn-sm" onclick="sendReply('admin')">
+            Admin Reply
+          </button>
+          <button class="btn-warning btn-sm" onclick="sendReply('staff')">
+            Staff Reply
+          </button>
+        </div>
+        <div class="row" style="margin-top: 4px">
+          <button
+            class="btn-success btn-sm"
+            onclick="sendReply('vendor-admin')"
+          >
+            Vendor Admin Reply
+          </button>
+          <button class="btn-ghost btn-sm" onclick="sendReply('vendor-staff')">
+            Vendor Staff Reply
+          </button>
+        </div>
+        <div class="row" style="margin-top: 4px">
+          <button
+            class="btn-danger btn-sm btn-full"
+            onclick="sendReply('fleetowner')"
+          >
+            Fleetowner Reply
+          </button>
+        </div>
+      </div>
+
+      <hr class="divider" />
+      <h6 style="font-size: 11px; color: #7c85b3">✏️ Edit conversation</h6>
+      <div class="section">
+        <div>
+          <label>Conversation ID</label>
+          <input id="convId" placeholder="conversation UUID" />
+        </div>
+        <div>
+          <label>New Message</label>
+          <input id="editMsg" placeholder="Updated message..." />
+        </div>
+        <button
+          class="btn-warning btn-sm btn-full"
+          onclick="editConversation()"
+        >
+          Edit
+        </button>
+      </div>
+
+      <hr class="divider" />
+      <h6 style="font-size: 11px; color: #7c85b3">🗑️ Delete conversation</h6>
+      <div class="section">
+        <div>
+          <label>Conversation ID</label>
+          <input id="delConvId" placeholder="conversation UUID" />
+        </div>
+        <button
+          class="btn-danger btn-sm btn-full"
+          onclick="deleteConversation()"
+        >
+          Delete
+        </button>
+      </div>
+
+      <hr class="divider" />
+      <h6 style="font-size: 11px; color: #7c85b3">🔄 Change ticket status</h6>
+      <div class="section">
+        <div>
+          <label>Status</label>
+          <select
+            id="ticketStatus"
+            style="
+              width: 100%;
+              padding: 7px 10px;
+              background: #0f1117;
+              border: 1px solid #2d3148;
+              border-radius: 6px;
+              color: #e2e8f0;
+              font-family: monospace;
+              font-size: 12px;
+            "
+          >
+            <option>open</option>
+            <option>in_progress</option>
+            <option>resolved</option>
+            <option>closed</option>
+          </select>
+        </div>
+        <button class="btn-ghost btn-sm btn-full" onclick="changeStatus()">
+          Change Status
+        </button>
+      </div>
+
+      <hr class="divider" />
+      <h6 style="font-size: 11px; color: #7c85b3">📋 Get conversations</h6>
+      <button class="btn-ghost btn-sm btn-full" onclick="getConversations()">
+        Fetch Conversations
+      </button>
+    </div>
+
+    <!-- ── MAIN LOG ── -->
+    <div class="main">
+      <div
+        style="
+          padding: 12px 16px;
+          background: #1a1d2e;
+          border-bottom: 1px solid #2d3148;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        "
+      >
+        <span style="font-size: 13px; font-weight: 700">Event Log</span>
+        <button class="btn-ghost btn-sm" onclick="clearLog()">Clear</button>
+      </div>
+      <div class="log-area" id="logArea">
+        <div class="log-entry log-system">
+          <span class="log-tag">READY</span> Fill in Server URL + JWT Token and
+          click Connect.
+        </div>
+      </div>
+      <div class="toolbar">
+        <span style="font-size: 11px; color: #4a5080"
+          >Listening for:
+          <span class="badge badge-blue">conversation:new</span>
+          <span class="badge badge-blue">conversation:updated</span>
+          <span class="badge badge-blue">conversation:deleted</span>
+          <span class="badge badge-blue">ticket:statusChanged</span>
+          <span class="badge badge-blue">notification</span>
+        </span>
+      </div>
+    </div>
+
+    <script>
+      let socket = null;
+
+      // ── LOG ──────────────────────────────────────
+      function log(type, tag, msg, data) {
+        const area = document.getElementById("logArea");
+        const el = document.createElement("div");
+        el.className = `log-entry log-${type}`;
+        const time = new Date().toLocaleTimeString("en-GB", { hour12: false });
+        el.innerHTML =
+          `<span class="log-time">${time}</span><span class="log-tag">[${tag}]</span>${msg}` +
+          (data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : "");
+        area.appendChild(el);
+        area.scrollTop = area.scrollHeight;
+      }
+
+      function clearLog() {
+        document.getElementById("logArea").innerHTML = "";
+      }
+
+      // ── SOCKET ───────────────────────────────────
+      function connect() {
+        const url = document.getElementById("serverUrl").value.trim();
+        const token = document.getElementById("jwtToken").value.trim();
+        if (!url || !token) {
+          log("error", "CONFIG", "Server URL and JWT token are required.");
+          return;
+        }
+
+        if (socket) socket.disconnect();
+
+        log("info", "WS", "Connecting to " + url + " ...");
+        setStatus("yellow", "Connecting...");
+
+        socket = io(url, {
+          auth: { token },
+          transports: ["websocket", "polling"],
+          path: "/api/realtime-service/socket.io",
+        });
+
+        socket.on("connect", () => {
+          setStatus("green", "Connected — " + socket.id);
+          document.getElementById("btnDisconnect").disabled = false;
+          // copy token to http field if empty
+          if (!document.getElementById("httpToken").value) {
+            document.getElementById("httpToken").value =
+              document.getElementById("jwtToken").value;
+          }
+          log("success", "WS", "Connected! socket.id: " + socket.id);
+        });
+
+        socket.on("disconnect", (reason) => {
+          setStatus("red", "Disconnected");
+          log("error", "WS", "Disconnected: " + reason);
+          document.getElementById("btnDisconnect").disabled = true;
+        });
+
+        socket.on("connect_error", (err) => {
+          setStatus("red", "Error");
+          log("error", "WS", "Connection error: " + err.message);
+        });
+
+        // ── ticket room ack
+        socket.on("ticket:joined", (d) =>
+          log("success", "JOINED", "Joined ticket room", d),
+        );
+
+        // ── conversation events
+        socket.on("conversation:new", (d) => {
+          log("event", "📨 NEW", "New conversation message received!", d);
+        });
+        socket.on("conversation:updated", (d) => {
+          log("event", "✏️ EDIT", "Conversation updated", d);
+        });
+        socket.on("conversation:deleted", (d) => {
+          log("event", "🗑️ DEL", "Conversation deleted", d);
+        });
+        socket.on("ticket:statusChanged", (d) => {
+          log("event", "🔄 STATUS", "Ticket status changed", d);
+        });
+
+        // ── notifications
+        socket.on("notification", (d) => {
+          log("event", "🔔 NOTIF", "Notification received", d);
+        });
+      }
+
+      function disconnect() {
+        if (socket) {
+          socket.disconnect();
+          socket = null;
+        }
+      }
+
+      function setStatus(color, text) {
+        const dot = document.getElementById("statusDot");
+        const span = document.getElementById("statusText");
+        dot.className = "status-dot dot-" + color;
+        span.textContent = text;
+      }
+
+      // ── ROOM ─────────────────────────────────────
+      function joinRoom() {
+        const id = ticketId();
+        if (!id) return;
+        if (!socket?.connected) {
+          log("error", "ROOM", "Not connected");
+          return;
+        }
+        socket.emit("ticket:join", { ticketId: id });
+        log("sent", "ROOM", "Sent ticket:join → room ticket:" + id);
+      }
+
+      function leaveRoom() {
+        const id = ticketId();
+        if (!id) return;
+        if (!socket?.connected) {
+          log("error", "ROOM", "Not connected");
+          return;
+        }
+        socket.emit("ticket:leave", { ticketId: id });
+        log("sent", "ROOM", "Sent ticket:leave");
+      }
+
+      // ── HELPERS ──────────────────────────────────
+      function ticketId() {
+        const v = document.getElementById("ticketId").value.trim();
+        if (!v) {
+          log("error", "INPUT", "Ticket ID required");
+          return null;
+        }
+        return v;
+      }
+
+      function apiBase() {
+        return document.getElementById("apiBase").value.replace(/\/$/, "");
+      }
+      function httpHeaders() {
+        return {
+          Authorization:
+            "Bearer " + document.getElementById("httpToken").value.trim(),
+        };
+      }
+
+      async function apiFetch(method, path, body) {
+        const url = apiBase() + path;
+        log("sent", "HTTP", method + " " + url, body || undefined);
+        try {
+          let res;
+          if (body instanceof FormData) {
+            res = await fetch(url, { method, headers: httpHeaders(), body });
+          } else {
+            res = await fetch(url, {
+              method,
+              headers: { ...httpHeaders(), "Content-Type": "application/json" },
+              body: body ? JSON.stringify(body) : undefined,
+            });
+          }
+          const json = await res.json().catch(() => ({}));
+          if (res.ok) {
+            log("success", "HTTP", res.status + " " + res.statusText, json);
+          } else {
+            log("error", "HTTP", res.status + " " + res.statusText, json);
+          }
+          return json;
+        } catch (e) {
+          log("error", "HTTP", "Fetch failed: " + e.message);
+        }
+      }
+
+      // ── HTTP ACTIONS ─────────────────────────────
+      async function sendReply(type) {
+        const id = ticketId();
+        const msg = document.getElementById("replyMsg").value.trim();
+        if (!id || !msg) {
+          log("error", "INPUT", "Ticket ID + message required");
+          return;
+        }
+
+        const fd = new FormData();
+        fd.append("message", msg);
+
+        let path;
+        if (type === "admin") {
+          path = `/api/admin/fleetowner/tickets/${id}/reply`;
+        } else if (type === "staff") {
+          path = `/api/admin/fleetowner/tickets/${id}/staff-reply`;
+        } else if (type === "vendor-admin") {
+          path = `/api/admin/vendor/tickets/${id}/reply`;
+        } else if (type === "vendor-staff") {
+          path = `/api/admin/vendor/tickets/${id}/staff-reply`;
+        } else if (type === "fleetowner") {
+          path = `/api/fleetowner-tickets/${id}/conversations`;
+        }
+
+        await apiFetch("POST", path, fd);
+      }
+
+      async function editConversation() {
+        const id = ticketId();
+        const convId = document.getElementById("convId").value.trim();
+        const msg = document.getElementById("editMsg").value.trim();
+        if (!id || !convId) {
+          log("error", "INPUT", "Ticket ID + Conversation ID required");
+          return;
+        }
+
+        const fd = new FormData();
+        if (msg) fd.append("message", msg);
+
+        await apiFetch(
+          "PATCH",
+          `/api/admin/tickets/${id}/conversations/${convId}`,
+          fd,
+        );
+      }
+
+      async function deleteConversation() {
+        const id = ticketId();
+        const convId = document.getElementById("delConvId").value.trim();
+        if (!id || !convId) {
+          log("error", "INPUT", "Ticket ID + Conversation ID required");
+          return;
+        }
+        await apiFetch(
+          "DELETE",
+          `/api/admin/tickets/${id}/conversations/${convId}`,
+        );
+      }
+
+      async function changeStatus() {
+        const id = ticketId();
+        const status = document.getElementById("ticketStatus").value;
+        if (!id) return;
+        await apiFetch("PATCH", `/api/admin/tickets/${id}/status`, { status });
+      }
+
+      async function getConversations() {
+        const id = ticketId();
+        if (!id) return;
+        await apiFetch("GET", `/api/admin/tickets/${id}/conversations`);
+      }
+    </script>
+  </body>
+</html>
