@@ -1,0 +1,14 @@
+diff --git a/node_modules/kafkajs/src/network/requestQueue/index.js b/node_modules/kafkajs/src/network/requestQueue/index.js
+index eee14d6..a45f20e 100644
+--- a/node_modules/kafkajs/src/network/requestQueue/index.js
++++ b/node_modules/kafkajs/src/network/requestQueue/index.js
+@@ -313,6 +313,9 @@ module.exports = class RequestQueue extends EventEmitter {
+     if (!this.throttleCheckTimeoutId) {
+       if (this.pending.length > 0) {
+         scheduleAt = scheduleAt > 0 ? scheduleAt : CHECK_PENDING_REQUESTS_INTERVAL
++      } else if (scheduleAt <= 0) {
++        // throttledUntil defaults to -1 -> negative scheduleAt when queue is empty (KafkaJS 2.2.4 / Node 24+)
++        return
+       }
+       this.throttleCheckTimeoutId = setTimeout(() => {
+         this.throttleCheckTimeoutId = null
